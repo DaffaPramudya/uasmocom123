@@ -1,15 +1,9 @@
 package com.example.kiblatku.kiblat
 
-import android.os.Build
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -97,11 +91,11 @@ fun KiblatHomeScreen(
         // Header with Settings
         TopAppBar(
             title = {
-                Text(
-                    "KiblatKu",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = textColor
+                // Logo
+                Image(
+                    painter = painterResource(id = R.drawable.logo_kiblatku_white),
+                    contentDescription = "KiblatKu Logo",
+                    modifier = Modifier.size(100.dp)
                 )
             },
             actions = {
@@ -187,7 +181,7 @@ fun KiblatHomeScreen(
                     painter = painterResource(id = R.drawable.qibla_arrow),
                     contentDescription = "Qibla Arrow",
                     modifier = Modifier
-                        .size(80.dp)
+                        .size(100.dp)
 //                        .align(Alignment.TopCenter)
 //                        .offset(y = 0.dp)
                         .rotate(angleDifference.toFloat())
@@ -273,15 +267,15 @@ fun LoadingScreen(isDarkMode: Boolean = isSystemInDarkTheme()) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // App Name
-            Text(
-                text = "KiblatKu",
-                fontSize = 36.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor
-            )
+//            // App Name
+//            Text(
+//                text = "KiblatKu",
+//                fontSize = 36.sp,
+//                fontWeight = FontWeight.Bold,
+//                color = textColor
+//            )
 
-            Spacer(modifier = Modifier.height(32.dp))
+//            Spacer(modifier = Modifier.height(32.dp))
 
             // Loading Spinner
             CircularProgressIndicator(
