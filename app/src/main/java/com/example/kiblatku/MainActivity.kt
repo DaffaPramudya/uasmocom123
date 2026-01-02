@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
+import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -134,7 +135,8 @@ fun KiblatScreen(
     }
 
     val arahPanah = arahKiblat?.let {
-        (it - azimuth + 360) % 360
+        val diff = ((it - azimuth + 360) % 360)
+        if (diff < 1 || diff > 359) 0 else diff.roundToInt()
     }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
@@ -143,7 +145,7 @@ fun KiblatScreen(
             text = buildString {
                 append("Arah HP: ${azimuth.toInt()}°\n")
                 append("Arah Kiblat: ${arahKiblat?.toInt() ?: "--"}°\n")
-                append("Putar ke: ${arahPanah?.toInt() ?: "--"}°\n\n")
+                append("Putar ke: ${arahPanah ?: "--"}°\n\n")
 
                 // Calibration hint (important)
                 append("Jika arah tidak stabil,\n")
