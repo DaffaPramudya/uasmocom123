@@ -35,6 +35,14 @@ class LocationProvider(context: Context) {
         )
     }
 
+    fun startLocationNoGPSUpdates(
+        lat: Double,
+        lon: Double,
+        onResult: (Double, Double) -> Unit
+    ) {
+        onResult(lat, lon)
+    }
+
     fun stopLocationUpdates() {
         callback?.let {
             client.removeLocationUpdates(it)
