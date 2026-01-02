@@ -3,55 +3,35 @@ package com.example.kiblatku
 import android.Manifest
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
-import androidx.compose.runtime.remember
-import kotlin.math.roundToInt
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.kiblatku.helper.DataManager
 import com.example.kiblatku.kiblat.KiblatCalculator
+import com.example.kiblatku.kiblat.KiblatHomeScreen
+import com.example.kiblatku.kiblat.LoadingScreen
+import com.example.kiblatku.kiblat.LocationDisabledDialog
 import com.example.kiblatku.kiblat.SettingsActivity
 import com.example.kiblatku.location.LocationProvider
 import com.example.kiblatku.location.PermissionHelper
 import com.example.kiblatku.sensor.CompassSensor
 import com.example.kiblatku.ui.theme.KiblatkuTheme
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var compass: CompassSensor
     private lateinit var locationProvider: LocationProvider
+    private lateinit var prefs: DataManager
 
     private var arahKiblat by mutableStateOf<Double?>(null)
+    private var isLoading by mutableStateOf(true)
+    private var currentLat by mutableStateOf(0.0)
+    private var currentLon by mutableStateOf(0.0)
 
     private val locationPermissionLauncher =
         registerForActivityResult(
@@ -66,14 +46,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val prefs = DataManager(this)
-
-        var isNoGPSMode by mutableStateOf(prefs.isNoGPSMode)
-
+        prefs = DataManager(this)
         compass = CompassSensor(this)
         locationProvider = LocationProvider(this)
 
-        // PERMISSION FLOW (modern)
+        val isNoGPSMode = prefs.isNoGPSMode
+
+        // Initialize location based on mode
         if (!isNoGPSMode) {
             if (PermissionHelper.hasLocationPermission(this)) {
                 ambilLokasi()
@@ -83,31 +62,73 @@ class MainActivity : ComponentActivity() {
                 )
             }
         } else {
-            ambilLokasidariPrefs(prefs)
+            ambilLokasidariPrefs()
         }
 
         setContent {
             KiblatkuTheme {
-                KiblatScreen(
-                    compass = compass,
-                    arahKiblat = arahKiblat,
-                    prefs= prefs
-                )
+                // Show loading screen for 2 seconds, then main screen
+                if (isLoading) {
+                    LoadingScreen()
+
+                    // Auto-hide loading after 2 seconds
+                    LaunchedEffect(Unit) {
+                        delay(2000)
+                        isLoading = false
+                    }
+                } else {
+                    val userLocation = if (currentLat != 0.0 && currentLon != 0.0) {
+                        Pair(currentLat, currentLon)
+                    } else {
+                        null
+                    }
+
+                    var showLocationDialog by remember { mutableStateOf(false) }
+
+                    if (showLocationDialog) {
+                        LocationDisabledDialog(
+                            onDismiss = { showLocationDialog = false },
+                            onEnable = {
+                                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                                startActivity(intent)
+                                showLocationDialog = false
+                            }
+                        )
+                    }
+
+                    KiblatHomeScreen(
+                        compass = compass,
+                        arahKiblat = arahKiblat,
+                        userLocation = userLocation,
+                        isDarkMode = isSystemInDarkTheme(),
+                        onSettingsClick = {
+                            val intent = Intent(this@MainActivity, SettingsActivity::class.java)
+                            startActivity(intent)
+                        },
+                        onLocationDisabled = {
+                            showLocationDialog = true
+                        }
+                    )
+                }
             }
         }
     }
 
     private fun ambilLokasi() {
         locationProvider.startLocationUpdates { lat, lon ->
+            currentLat = lat
+            currentLon = lon
             arahKiblat = KiblatCalculator.hitungArahKiblat(lat, lon)
         }
     }
 
-    private fun ambilLokasidariPrefs(prefs: DataManager) {
+    private fun ambilLokasidariPrefs() {
         val lat = prefs.lat.toDouble()
         val lon = prefs.lon.toDouble()
 
-        locationProvider.startLocationNoGPSUpdates(lat, lon) { lat, lon ->
+        if (lat != 0.0 && lon != 0.0) {
+            currentLat = lat
+            currentLon = lon
             arahKiblat = KiblatCalculator.hitungArahKiblat(lat, lon)
         }
     }
@@ -123,89 +144,3 @@ class MainActivity : ComponentActivity() {
         locationProvider.stopLocationUpdates()
     }
 }
-
-@Composable
-fun KiblatScreen(
-    compass: CompassSensor,
-    arahKiblat: Double?,
-    prefs: DataManager
-) {
-    val azimuth by remember {
-        derivedStateOf { compass.azimuth }
-    }
-
-    val arahPanah = arahKiblat?.let {
-        val diff = ((it - azimuth + 360) % 360)
-        if (diff < 1 || diff > 359) 0 else diff.roundToInt()
-    }
-
-    Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-        Text(
-            modifier = Modifier.padding(padding),
-            text = buildString {
-                append("Arah HP: ${azimuth.toInt()}°\n")
-                append("Arah Kiblat: ${arahKiblat?.toInt() ?: "--"}°\n")
-                append("Putar ke: ${arahPanah ?: "--"}°\n\n")
-
-                // Calibration hint (important)
-                append("Jika arah tidak stabil,\n")
-                append("gerakkan HP membentuk angka 8 📱")
-            }
-        )
-        SettingsButton(prefs)
-    }
-}
-
-@Composable
-fun SettingsButton(pref: DataManager) {
-    val context = LocalContext.current
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(bottom = 48.dp),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        Button(
-            onClick = {
-                val intent = Intent(context, SettingsActivity::class.java)
-                context.startActivity(intent)
-            },
-            shape = RoundedCornerShape(24.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White.copy(alpha = 0.15f) // Glass effect
-            ),
-            modifier = Modifier
-                .height(64.dp)
-                .fillMaxWidth(0.6f)
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color.White.copy(alpha = 0.5f), Color.Transparent)
-                    ),
-                    shape = RoundedCornerShape(24.dp)
-                ),
-            contentPadding = PaddingValues(horizontal = 24.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = Color(0xFFC8E6C9)
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    "PREFERENCES",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White,
-                    letterSpacing = 2.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}
-

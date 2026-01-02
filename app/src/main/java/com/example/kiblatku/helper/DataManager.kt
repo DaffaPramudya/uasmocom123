@@ -26,7 +26,7 @@ class DataManager(context: Context) {
 
     var locationName: String
         get() = prefs.getString("location_name", "") ?: ""
-        set(value) = prefs.edit().putString("location_name", value).apply()
+        set(value) = prefs.edit { putString("location_name", value).apply() }
 
     var compassType: String
         get() = prefs.getString("compass_type", "Analog") ?: "Analog"
@@ -49,7 +49,6 @@ class DataManager(context: Context) {
         set(value) = prefs.edit { putBoolean("vibration_enabled", value) }
 
     var AccuracyStyle: String
-        get() = prefs.getString("Numbers", "Color Code") ?: "Numbers"
-        set(value) = prefs.edit { putString("is_smooth", value) }
-
+        get() = prefs.getString("accuracy_style", "Color Code") ?: "Color Code"
+        set(value) = prefs.edit { putString("accuracy_style", value) }
 }

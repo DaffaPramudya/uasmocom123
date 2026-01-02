@@ -31,7 +31,7 @@ class CompassSensor(context: Context) : SensorEventListener {
 
     // --- FILTER CONFIG ---
     private var filteredAzimuth = 0f
-    private val alpha = 0.01f   // 0.05 = lebih halus | 0.1 = rekomendasi | 0.2 = lebih responsif
+    private val alpha = 0.1f   // 0.05 = lebih halus | 0.1 = rekomendasi | 0.2 = lebih responsif
 
     fun start() {
         sensorManager.registerListener(
